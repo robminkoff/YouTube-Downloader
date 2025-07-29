@@ -63,6 +63,7 @@ def index():
             # First, get format info to determine quality
             format_cmd = [
                 YT_DLP_PATH,
+                '--cookies-from-browser', 'chrome',
                 '-f', 'best[height>=1080][ext=mp4]/best[height>=720][ext=mp4]/best[ext=mp4]/best',
                 '--print', 'format_id,height,width,ext',
                 '--no-playlist',
@@ -86,6 +87,7 @@ def index():
             # Now run the actual download command
             download_cmd = [
                 YT_DLP_PATH,
+                '--cookies-from-browser', 'chrome',
                 '-f', 'best[height>=1080][ext=mp4]/best[height>=720][ext=mp4]/best[ext=mp4]/best',
                 '-o', output_path,
                 '--no-playlist',
