@@ -92,6 +92,29 @@ youtube-downloader/
 - **File Format**: MP4 (best available quality)
 - **Download Folder**: `downloads/` (auto-created)
 
+### YouTube cookies (needed on Railway)
+
+YouTube blocks a lot of requests from datacenter IPs unless yt-dlp sends signed-in
+cookies. Locally the app reads them straight out of Chrome. A Railway container has
+no browser installed, so it needs the cookies handed to it instead:
+
+1. Install a "Get cookies.txt LOCALLY" browser extension.
+2. Sign in to YouTube, open any video, and export cookies in **Netscape** format.
+3. In the Railway dashboard, add a variable `YTDLP_COOKIES` and paste the whole
+   file contents in as the value.
+
+The app picks its cookie source in this order, and logs which one it chose at startup:
+
+| Condition | What yt-dlp gets |
+|---|---|
+| `YTDLP_COOKIES_FILE` points at a file | `--cookies <that file>` |
+| `YTDLP_COOKIES` env var is set | `--cookies <temp file written at boot>` |
+| Running on macOS with Chrome installed | `--cookies-from-browser chrome` |
+| Otherwise | no cookies (works for some videos) |
+
+Cookies are account credentials — never commit a `cookies.txt`, and expect to
+re-export it every few weeks when the session expires.
+
 ## Security Notes
 
 - The application uses a development secret key by default

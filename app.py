@@ -1,5 +1,7 @@
 import os
+import sys
 import uuid
+import tempfile
 import subprocess
 import shutil
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for, session
@@ -32,6 +34,46 @@ def find_yt_dlp():
 
 YT_DLP_PATH = find_yt_dlp()
 
+
+def _write_cookie_file():
+    """Write the cookie file contents from YTDLP_COOKIES to disk once, at startup.
+
+    Railway (and any Linux container) has no browser installed, so
+    --cookies-from-browser can never work there. Instead, paste an exported
+    Netscape-format cookies.txt into the YTDLP_COOKIES env var.
+    """
+    contents = os.environ.get('YTDLP_COOKIES')
+    if not contents:
+        return None
+
+    fd, path = tempfile.mkstemp(prefix='yt-cookies-', suffix='.txt')
+    with os.fdopen(fd, 'w') as f:
+        f.write(contents.replace('\\n', '\n'))
+    os.chmod(path, 0o600)
+    return path
+
+
+COOKIE_FILE = os.environ.get('YTDLP_COOKIES_FILE') or _write_cookie_file()
+
+# Only fall back to reading the local browser when we're actually on a desktop.
+USE_BROWSER_COOKIES = (
+    not COOKIE_FILE
+    and sys.platform == 'darwin'
+    and os.path.exists(os.path.expanduser('~/Library/Application Support/Google/Chrome'))
+)
+
+
+def cookie_args():
+    """Return the yt-dlp cookie flags appropriate for this environment."""
+    if COOKIE_FILE and os.path.exists(COOKIE_FILE):
+        return ['--cookies', COOKIE_FILE]
+    if USE_BROWSER_COOKIES:
+        return ['--cookies-from-browser', 'chrome']
+    return []
+
+
+print(f"Cookie source: {' '.join(cookie_args()) or 'none (unauthenticated)'}")
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -63,7 +105,7 @@ def index():
             # First, get format info to determine quality
             format_cmd = [
                 YT_DLP_PATH,
-                '--cookies-from-browser', 'chrome',
+                *cookie_args(),
                 '-f', 'best[height>=1080][ext=mp4]/best[height>=720][ext=mp4]/best[ext=mp4]/best',
                 '--print', 'format_id,height,width,ext',
                 '--no-playlist',
@@ -87,7 +129,7 @@ def index():
             # Now run the actual download command
             download_cmd = [
                 YT_DLP_PATH,
-                '--cookies-from-browser', 'chrome',
+                *cookie_args(),
                 '-f', 'best[height>=1080][ext=mp4]/best[height>=720][ext=mp4]/best[ext=mp4]/best',
                 '-o', output_path,
                 '--no-playlist',

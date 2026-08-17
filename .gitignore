@@ -1,6 +1,10 @@
 # Downloads folder
 downloads/
 
+# Exported YouTube cookies - never commit these, they are account credentials
+cookies.txt
+*cookies*.txt
+
 # Environment variables
 .env
 .env.local
